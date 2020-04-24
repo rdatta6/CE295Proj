@@ -6,6 +6,7 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
+Z = 0.4; %outrage scenarios
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
@@ -104,7 +105,7 @@ cvx_begin
         SOC(i) >= b*SOC_min; 
         s*g_solar(i) + w*g_wind(i) + P(i)/1000 + E(i) == L(i); 
     end
-    E <= E_grid; 
+    E <= E_grid*Z; 
     E >= 0; 
     s <= s_max;
     s >= s_min;
@@ -117,6 +118,11 @@ cvx_begin
 
 cvx_end 
 
-    
-   
+%% Results
+fprintf(1,'------------------- Results --------------------\n');
+fprintf(1,'--------------------------------------------------\n');
+fprintf(1,'Minimum microgrid Cost : %4.2f USD\n',cvx_optval);
+fprintf(1,'\n');
+fprintf(1,'Solar %f | Wind %f | Battery %f | Diesel %f',s,w,b,d);
+
  
