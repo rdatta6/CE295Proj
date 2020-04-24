@@ -37,7 +37,7 @@ g_wind_cost = W_0*c_w; %capital cost of turbine [$/kW]*[kW]
 
 %% Diesel Parameters
 %cap the number of diesel units at 21 
-n_diesel = 21  ; %current # of diesel generator units at Puerto Rico Airport
+n_diesel = 1  ; %current # of diesel generator units at Puerto Rico Airport
 P_diesel = 1200; %diesel generation rate [kW]
 g_diesel = n_diesel*P_diesel*ones(24, 1); %power generated from diesel at time t
 c_d = 0.239; %cost of diesel per kW generated
@@ -52,7 +52,7 @@ U_0 = 3.3; %Coefficient in open-circuit-voltage model [V]
 C = 51782; %Equivalent Cell capacitance [F]
 R = 0.01; %Cell resistance [ohm]
 W_battery =  0.009; %footprint of each cell [m^2] 
-B_0 = 100; %**********rated battery capacity [kW]*********
+B_0 = 0.1; %**********rated battery capacity [kW]*********
 g_battery_cost = 207*W_0; % capital cost of battery [$/kWh]
 
 %% LCA Values
@@ -102,7 +102,7 @@ cvx_begin
             C*b*U_0^2) <= 0;
         SOC(i) <= b*SOC_max; 
         SOC(i) >= b*SOC_min; 
-        s*g_solar(i) + w*g_wind(i) + P(i)/1000 + E(i) == L(i); 
+        s*g_solar(i) + w*g_wind(i) + d*g_diesel(i) + P(i)/1000 + E(i) == L(i); 
     end
     E <= E_grid; 
     E >= 0; 
