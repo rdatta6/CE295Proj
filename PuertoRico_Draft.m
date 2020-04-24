@@ -6,7 +6,7 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
-Z = 0.4; %outrage scenarios
+Z = 1; %outrage scenarios
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
@@ -53,8 +53,8 @@ U_0 = 3.3; %Coefficient in open-circuit-voltage model [V]
 C = 51782; %Equivalent Cell capacitance [F]
 R = 0.01; %Cell resistance [ohm]
 W_battery =  0.009; %footprint of each cell [m^2] 
-B_0 = 0.1; %**********rated battery capacity [kW]*********
-g_battery_cost = 207*W_0; % capital cost of battery [$/kWh]
+B_0 = 100/1000; %**********rated battery capacity [kW]*********
+g_battery_cost = 207*B_0; % capital cost of battery [$/kWh]
 
 %% LCA Values
 CO2_b = 456 * B_0 *10^-6; %[g CO2/ kWh] * kW * 1h
