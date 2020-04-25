@@ -6,7 +6,7 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
-Z = 1; %outrage scenarios
+Z = 0; %outrage scenarios
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
@@ -53,7 +53,7 @@ U_0 = 3.3; %Coefficient in open-circuit-voltage model [V]
 C = 51782; %Equivalent Cell capacitance [F]
 R = 0.01; %Cell resistance [ohm]
 W_battery =  0.009; %footprint of each cell [m^2] 
-B_0 = 100/1000; %**********rated battery capacity [kW]*********
+B_0 = 100; %**********rated battery capacity [kW]*********
 g_battery_cost = 207*B_0; % capital cost of battery [$/kWh]
 
 %% LCA Values
@@ -86,11 +86,11 @@ A_max = 627465.2; %total area constraint [m^2]
 
 %% Optimization Program 
 cvx_begin 
-    variables b s w SOC(24) d P(24) P_c(24) E(24) 
-   
+    variables b s w SOC(24) d P(24) P_c(24) E(24) B_c(24) B_d(24) 
+    
     minimize(g_battery_cost*b + g_solar_cost*s + g_wind_cost*w + ...
-     c_grid*sum(E) + g_diesel_cost*d + CO2_b*carbon_cost*b + CO2_s*carbon_cost*s ...
-     + CO2_w*carbon_cost*w + CO2_G*carbon_cost*sum(E) + CO2_d*carbon_cost*d)
+        c_grid*sum(E) + g_diesel_cost*d + CO2_b*carbon_cost*b + CO2_s*carbon_cost*s ...
+        + CO2_w*carbon_cost*w + CO2_G*carbon_cost*sum(E) + CO2_d*carbon_cost*d)
     
     subject to 
         W_battery*b + W_solar*s + W_wind*w + W_diesel*d...
@@ -98,12 +98,11 @@ cvx_begin
     
     for i = 1:(length(time)-1)
         
-        SOC(i+1) == SOC(i) - 1*P(i); 
-        P(i) - P_c(i) + quad_over_lin(R*C*P_c(i), 2*SOC(i) +...
-            C*b*U_0^2) <= 0;
+        SOC(i+1) == SOC(i) - 0.9*B_c(i) - 1/0.9*B_d(i)
+        
         SOC(i) <= b*SOC_max; 
         SOC(i) >= b*SOC_min; 
-        s*g_solar(i) + w*g_wind(i) + d*g_diesel(i) + P(i)/1000 + E(i) == L(i); 
+        s*g_solar(i) + w*g_wind(i) + d*g_diesel(i) + B_d(i) - B_c(i) + E(i) == L(i); 
     end
     E <= E_grid*Z; 
     E >= 0; 
