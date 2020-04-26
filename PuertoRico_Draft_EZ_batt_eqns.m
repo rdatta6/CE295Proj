@@ -16,7 +16,7 @@ n_solar = 1; %number of solar panels [-]; 50 previously
 c_s = 0.1255; %LCOE of solar per kWh generated
 W_solar = 1.63; %footprint of each panel [m^2] 
 g_solar = n_solar*W_solar*M*lf*I/1000; %hourly generation [kW]
-S_0 = 300/1000; %******rated power of one solar panel [kW]*********
+S_0 = 345/1000; %******rated power of one solar panel [kW]*********
 g_solar_cost = S_0*c_s; %capital cost of PV Panel [$/kW]*[kW]
 
 %% Wind Parameters
@@ -31,11 +31,11 @@ P_gen = P_turbine*eta; %power generated from one turbine [kW]
 n_turbines = 1; %**********number of turbine units; 50 previously***************
 g_wind = n_turbines*P_gen; %total renewable energy generated from wind at time t
 %W_wind = 2*2.8; %m^2 footprint of one turbine, double by 2 for spacing
-W_wind = 1000;
+W_wind = A*2;
 %A_wind = W_wind*n_turbines; %total area occupied by turbines
-c_w = 0.0426; %LCOE cost per kWh generated [$/kWh]
+c_w = 0.038; %turbine cost per kWh generated [$/kWh]
 W_0 = 50; %*******rated power of one turbine [kW]*********
-g_wind_cost = W_0*c_w; %capital cost of turbine [$/kW]*[kW]
+g_wind_cost = W_0*c_w; %capital cost of turbine [$/kWh]*[kW]*[1hr]
 
 %% Diesel Parameters
 %cap the number of diesel units at 21 
@@ -139,10 +139,14 @@ cvx_begin
 
 cvx_end 
 
+CO2 = CO2_b*b + CO2_s*sum(g_solar)*s+ CO2_w*sum(g_wind)*w + CO2_G*sum(E) + CO2_d*sum(D);
+
 %% Results
 fprintf(1,'------------------- Results --------------------\n');
 fprintf(1,'--------------------------------------------------\n');
 fprintf(1,'Minimum microgrid Cost : %4.2f USD\n',cvx_optval);
 fprintf(1,'\n');
 fprintf(1,'Solar %f | Wind %f | Battery %f',s,w,b);
+fprintf(1,'\n');
+fprintf(1,'Total daily emissions %f metric tons CO2eq',CO2);
 
