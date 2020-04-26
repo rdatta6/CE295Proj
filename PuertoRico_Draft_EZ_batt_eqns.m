@@ -6,14 +6,14 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
-Z = 0.8; %outrage scenarios
+Z = 0.8; %outrage scenarios !!!!parameter that we can adjust!!!
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
 M = 0.215;  %Module Efficiency
 lf = 0.862; %(1-%losses) in distribution
 n_solar = 1; %number of solar panels [-]; 50 previously 
-c_s = 0.1255; %cost of solar per kWh generated
+c_s = 0.1255; %LCOE of solar per kWh generated
 W_solar = 1.63; %footprint of each panel [m^2] 
 g_solar = n_solar*W_solar*M*lf*I/1000; %hourly generation [kW]
 S_0 = 300/1000; %******rated power of one solar panel [kW]*********
@@ -33,7 +33,7 @@ g_wind = n_turbines*P_gen; %total renewable energy generated from wind at time t
 %W_wind = 2*2.8; %m^2 footprint of one turbine, double by 2 for spacing
 W_wind = 1000;
 %A_wind = W_wind*n_turbines; %total area occupied by turbines
-c_w = 0.0426; %turbine cost per kWh generated [$/kWh]
+c_w = 0.0426; %LCOE cost per kWh generated [$/kWh]
 W_0 = 50; %*******rated power of one turbine [kW]*********
 g_wind_cost = W_0*c_w; %capital cost of turbine [$/kW]*[kW]
 
@@ -56,6 +56,7 @@ R = 0.01; %Cell resistance [ohm]
 W_battery =  0.009; %footprint of each cell [m^2] 
 B_0 = 1000; %**********rated battery capacity [kW]*********
 g_battery_cost = 0.3; % LCOE of battery [$/kWh]
+gamma = 0.9; 
 
 %% LCA Values
 CO2_b = 456 *10^-6; %[ton CO2/ kWh]
@@ -91,7 +92,7 @@ d_min = 0; %minimum diesel scaling
 d_max = 42000; %maximum diesel scaling 
 
 A_max = 627465.2; %total area constraint [m^2]
-A_used = 0.1 * A_max;
+A_used = 0.1 * A_max; %!!!!parameter that we can adjust!!!
 
 %% Optimization Program 
 cvx_begin 
@@ -108,11 +109,13 @@ cvx_begin
             <= A_used; 
         
     for i = 1:length(time) - 1
-        SOC(i+1) == SOC(i) + 0.9*B_c(i) - 1/0.9*B_d(i);
+        SOC(i+1) == SOC(i) + gamma*B_c(i) - 1/gamma*B_d(i);
     end
-    I = length(time);
-    SOC(1) == SOC(I) + 0.9*B_c(I) - 1/0.9*B_d(I);
-    SOC(8) == 0;
+    
+    I = length(time); 
+    SOC(1) == SOC(I) + gamma*B_c(I) - 1/gamma*B_d(I); 
+    %Battery energy level is the same at hour 0 and hour 24
+    
     for i = 1:length(time)
         SOC(i) <= b*SOC_max; 
         SOC(i) >= 0; 
@@ -142,5 +145,4 @@ fprintf(1,'--------------------------------------------------\n');
 fprintf(1,'Minimum microgrid Cost : %4.2f USD\n',cvx_optval);
 fprintf(1,'\n');
 fprintf(1,'Solar %f | Wind %f | Battery %f',s,w,b);
-%%
-g_battery_cost*b + g_solar_cost*s + g_wind_cost*w + c_grid*sum(E)
+
