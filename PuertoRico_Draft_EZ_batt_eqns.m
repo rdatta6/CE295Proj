@@ -10,19 +10,19 @@ Z = 0; %outrage scenarios
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
-M = 0.215;  %Module Efficiency
+M = 0.1951;  %Module Efficiency
 lf = 0.862; %(1-%losses) in distribution
 n_solar = 1; %number of solar panels [-]; 50 previously 
 c_s = 0.1255; %cost of solar per kW generated
-W_solar = 1.63; %footprint of each panel [m^2] 
+W_solar = 2.57; %footprint of each panel [m^2] 
 g_solar = n_solar*W_solar*M*lf*I; %Total maximum hourly generation
-S_0 = 300/1000; %******rated power of one solar panel [kW]*********
+S_0 = 0.5; %******rated power of one solar panel [kW]*********
 g_solar_cost = S_0*c_s; %capital cost of PV Panel [$/kW]*[kW]
 
 %% Wind Parameters
 rho = 1.2; %air density [kg/m^3]
 V = data(:, 6);  %wind speed at time t [m/s]
-A = 254.5; %swept area of the turbine [m^2]
+A = 23.75; %swept area of the turbine [m^2]
 P_wind = 0.5*rho*A*V.^3; %power from wind
 C_p = 0.593; %Betz limit
 P_turbine = P_wind*C_p;
@@ -30,18 +30,18 @@ eta = 0.96; %gearbox transmission efficiency
 P_gen = P_turbine*eta; %power generated from one turbine
 n_turbines = 1; %**********number of turbine units; 50 previously***************
 g_wind = n_turbines*P_gen; %total renewable energy generated from wind at time t
-W_wind = 2*2.8; %m^2 footprint of one turbine, double by 2 for spacing
+W_wind = 47.5; %m^2 footprint of one turbine, double by 2 for spacing
 %A_wind = W_wind*n_turbines; %total area occupied by turbines
 c_w = 0.0426; %turbine cost per kW generated [$/kW]
-W_0 = 100; %*******rated power of one turbine [kW]*********
+W_0 = 10; %*******rated power of one turbine [kW]*********
 g_wind_cost = W_0*c_w; %capital cost of turbine [$/kW]*[kW]
 
 %% Diesel Parameters
 %cap the number of diesel units at 21 
 n_diesel = 1  ; %current # of diesel generator units at Puerto Rico Airport
-P_diesel = 1200; %diesel generation rate [kW]
+P_diesel = 1130; %diesel generation rate [kW]
 g_diesel = n_diesel*P_diesel*ones(24, 1); %power generated from diesel at time t
-c_d = 0.239; %cost of diesel per kW generated
+c_d = 0.0000239; %cost of diesel per kW generated
 beta = 0.077818182; %diesel consumption rate [gal/kWh]
 fc = 1.9; %fuel cost per gallon [$/gallon]
 D_0 = P_diesel; 
@@ -102,6 +102,7 @@ cvx_begin
         
         SOC(i) <= b*SOC_max; 
         SOC(i) >= b*SOC_min; 
+        
         s*g_solar(i) + w*g_wind(i) + d*g_diesel(i) + B_d(i) - B_c(i) + E(i) == L(i); 
     end
     E <= E_grid*Z; 
@@ -114,6 +115,7 @@ cvx_begin
     w >= w_min; 
     d <= d_max; 
     d >= d_min; 
+   
 
 cvx_end 
 
