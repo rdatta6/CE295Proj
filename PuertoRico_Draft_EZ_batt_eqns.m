@@ -6,7 +6,7 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
-Z = 0.8; %outrage scenarios !!!!parameter that we can adjust!!!
+Z = 1; %outrage scenarios !!!!parameter that we can adjust!!!
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
@@ -92,7 +92,7 @@ d_min = 0; %minimum diesel scaling
 d_max = 42000; %maximum diesel scaling 
 
 A_max = 627465.2; %total area constraint [m^2]
-A_used = 0.1 * A_max; %!!!!parameter that we can adjust!!!
+A_used = A_max; %!!!!parameter that we can adjust!!!
 
 %% Optimization Program 
 cvx_begin 
@@ -112,8 +112,9 @@ cvx_begin
         SOC(i+1) == SOC(i) + gamma*B_c(i) - 1/gamma*B_d(i);
     end
     
-    I = length(time); 
-    SOC(1) == SOC(I) + gamma*B_c(I) - 1/gamma*B_d(I); 
+    I = length(time);
+    SOC(8) == 0;
+    SOC(1) == SOC(I) + gamma*B_c(I) - 1/gamma*B_d(I);
     %Battery energy level is the same at hour 0 and hour 24
     
     for i = 1:length(time)
