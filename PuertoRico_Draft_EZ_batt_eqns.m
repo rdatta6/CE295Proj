@@ -6,7 +6,7 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
-Z = 1; %outrage scenarios
+Z = 0.8; %outrage scenarios
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
@@ -30,7 +30,8 @@ eta = 0.96; %gearbox transmission efficiency
 P_gen = P_turbine*eta; %power generated from one turbine [kW]
 n_turbines = 1; %**********number of turbine units; 50 previously***************
 g_wind = n_turbines*P_gen; %total renewable energy generated from wind at time t
-W_wind = 2*2.8; %m^2 footprint of one turbine, double by 2 for spacing
+%W_wind = 2*2.8; %m^2 footprint of one turbine, double by 2 for spacing
+W_wind = 1000;
 %A_wind = W_wind*n_turbines; %total area occupied by turbines
 c_w = 0.0426; %turbine cost per kWh generated [$/kWh]
 W_0 = 50; %*******rated power of one turbine [kW]*********
@@ -89,7 +90,8 @@ s_max = 348900; %maximum solar scaling
 d_min = 0; %minimum diesel scaling
 d_max = 42000; %maximum diesel scaling 
 
-A_max = 627465.2; %total area constraint [m^2] 
+A_max = 627465.2; %total area constraint [m^2]
+A_used = 0.1 * A_max;
 
 %% Optimization Program 
 cvx_begin 
@@ -103,7 +105,7 @@ cvx_begin
     
     subject to 
         W_battery*b + W_solar*s + W_wind*w...
-            <= A_max; 
+            <= A_used; 
         
     for i = 1:length(time) - 1
         SOC(i+1) == SOC(i) + 0.9*B_c(i) - 1/0.9*B_d(i);
