@@ -6,7 +6,7 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
-Z = 1; %outrage scenarios !!!!parameter that we can adjust!!!
+Z = 0.8; %outrage scenarios !!!!parameter that can be adjusted!!!
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
@@ -55,7 +55,7 @@ C = 51782; %Equivalent Cell capacitance [F]
 R = 0.01; %Cell resistance [ohm]
 W_battery =  0.009; %footprint of each cell [m^2] 
 B_0 = 1000; %**********rated battery capacity [kW]*********
-g_battery_cost = 0.3; % LCOE of battery [$/kWh]
+g_battery_cost = 0.7; % LCOE of battery [$/kWh]
 gamma = 0.9; 
 
 %% LCA Values
@@ -79,11 +79,11 @@ c_grid = 0.2; %[$/kWh]
 %% Scaling Parameters
 %Scaling parameters were found by dividing the maximum area of each source
 %by the footprints 
-SOC_min = B_0*0.9; %minimum allowable cell energy levels [kWh] 
-SOC_max = B_0*0.15; %maximum allowable cell energy levels [kWh] 
+SOC_min = B_0*0.15; %minimum allowable cell energy levels [kWh] 
+SOC_max = B_0*0.9; %maximum allowable cell energy levels [kWh] 
 P_max = 270; %maximum discharge of battery [W] 
 b_min = 0; %minimum battery scaling
-b_max = 70*10^6; %scaling area constraint 
+b_max = 100000; %scaling area constraint 
 w_min = 0; %minimum wind scaling
 w_max = 112000; %maximum wind scaling 
 s_min = 0; %minimum wind scaling
@@ -92,15 +92,15 @@ d_min = 0; %minimum diesel scaling
 d_max = 42000; %maximum diesel scaling 
 
 A_max = 627465.2; %total area constraint [m^2]
-A_used = A_max; %!!!!parameter that we can adjust!!!
+A_used = A_max * 1; %!!!!parameter that can be adjusted!!!
 
 %% Optimization Program 
+cvx_precision best
 cvx_begin 
     variables b s w SOC(24) E(24) B_c(24) B_d(24) D(24) 
-    
-    minimize(sum(B_c)*g_battery_cost + sum(D)*c_d + ...
+    minimize(sum(B_c)*g_battery_cost + sum(D)*c_d + b*0.001+...
         sum(g_solar)*c_s*s + sum(g_wind)*c_w*w + ...
-        c_grid*sum(E) + CO2_b*carbon_cost*b + CO2_s*sum(g_solar)*carbon_cost*s ...
+        c_grid*sum(E) + CO2_b*carbon_cost*sum(B_c) + CO2_s*sum(g_solar)*carbon_cost*s ...
         + CO2_w*sum(g_wind)*carbon_cost*w + CO2_G*carbon_cost*sum(E) + ...
         CO2_d*sum(D)*carbon_cost)
     
