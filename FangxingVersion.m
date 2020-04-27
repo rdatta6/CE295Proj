@@ -126,11 +126,11 @@ cvx_begin
         B_d(i) >= 0;
         D(i) >= 0;
         D(i) <= P_diesel;
-        E(i) <= E_grid*Z; 
         E(i) >= 0; 
         s*g_solar(i) + w*g_wind(i) + D(i) + B_d(i) - B_c(i) + E(i) == L(i); 
     end
     
+    sum(E) <= sum(E_grid)*Z; 
     s <= s_max;
     s >= s_min;
     b <= b_max;
