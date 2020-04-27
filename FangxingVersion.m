@@ -6,7 +6,7 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
-Z = 1; %outrage scenarios !!!!parameter that can be adjusted!!!
+Z = 0.5; %outrage scenarios !!!!parameter that can be adjusted!!!
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
@@ -155,9 +155,9 @@ fprintf(1,'Total daily emissions %f metric tons CO2eq',CO2, '\n');
 total_wind = w.*g_wind;
 total_solar = s.*g_solar;
 figure(1)
-plot(time/24, E, time/24, L, time/24, total_wind, 'cyan', 'LineWidth', 5)
+plot(time/24, E, time/24, L, time/24, total_solar, time/24, total_wind, 'cyan', 'LineWidth', 5)
 title(['Outage Scenario (Z = ', num2str(Z), ')'])
-legend('Hourly Energy Imported from Grid', 'Hourly Demand', 'Wind Generation') 
+legend('Hourly Energy Imported from Grid', 'Hourly Demand', 'Solar Generation', 'Wind Generation') 
 %xticks([0:1:23])
 %xlim([0 24])
 set(gca,'FontSize',20)
