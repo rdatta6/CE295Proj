@@ -6,62 +6,43 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
-Z = 0.8; %outrage scenarios
+Z = 1; %outrage scenarios !!!!parameter that can be adjusted!!!
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
-M = 0.1951;  %Module Efficiency
+M = 0.215;  %Module Efficiency
 lf = 0.862; %(1-%losses) in distribution
 n_solar = 1; %number of solar panels [-]; 50 previously 
-<<<<<<< HEAD
-c_s = 0.1255; %cost of solar per kW generated
-W_solar = 2.57; %footprint of each panel [m^2] 
-g_solar = n_solar*W_solar*M*lf*I; %Total maximum hourly generation
-S_0 = 0.5; %******rated power of one solar panel [kW]*********
-=======
-c_s = 0.1255; %cost of solar per kWh generated
+c_s = 0.1255; %LCOE of solar per kWh generated
 W_solar = 1.63; %footprint of each panel [m^2] 
 g_solar = n_solar*W_solar*M*lf*I/1000; %hourly generation [kW]
-S_0 = 300/1000; %******rated power of one solar panel [kW]*********
->>>>>>> e282afc3d8e53ada721fbc7d306cee6c68fb506c
+S_0 = 345/1000; %******rated power of one solar panel [kW]*********
 g_solar_cost = S_0*c_s; %capital cost of PV Panel [$/kW]*[kW]
 
 %% Wind Parameters
 rho = 1.2; %air density [kg/m^3]
 V = data(:, 6);  %wind speed at time t [m/s]
-<<<<<<< HEAD
-A = 23.75; %swept area of the turbine [m^2]
-P_wind = 0.5*rho*A*V.^3; %power from wind
-=======
 A = 254.5; %swept area of the turbine [m^2]
 P_wind = 0.5*rho*A*(V.^3)/1000; %power from wind [kW]
->>>>>>> e282afc3d8e53ada721fbc7d306cee6c68fb506c
 C_p = 0.593; %Betz limit
 P_turbine = P_wind*C_p;
 eta = 0.96; %gearbox transmission efficiency
 P_gen = P_turbine*eta; %power generated from one turbine [kW]
 n_turbines = 1; %**********number of turbine units; 50 previously***************
 g_wind = n_turbines*P_gen; %total renewable energy generated from wind at time t
-<<<<<<< HEAD
-W_wind = 47.5; %m^2 footprint of one turbine, double by 2 for spacing
-%A_wind = W_wind*n_turbines; %total area occupied by turbines
-c_w = 0.0426; %turbine cost per kW generated [$/kW]
-W_0 = 10; %*******rated power of one turbine [kW]*********
-=======
 %W_wind = 2*2.8; %m^2 footprint of one turbine, double by 2 for spacing
-W_wind = 1000;
+W_wind = A*2;
 %A_wind = W_wind*n_turbines; %total area occupied by turbines
-c_w = 0.0426; %turbine cost per kWh generated [$/kWh]
+c_w = 0.038; %turbine cost per kWh generated [$/kWh]
 W_0 = 50; %*******rated power of one turbine [kW]*********
->>>>>>> e282afc3d8e53ada721fbc7d306cee6c68fb506c
-g_wind_cost = W_0*c_w; %capital cost of turbine [$/kW]*[kW]
+g_wind_cost = W_0*c_w; %capital cost of turbine [$/kWh]*[kW]*[1hr]
 
 %% Diesel Parameters
 %cap the number of diesel units at 21 
 n_diesel = 1  ; %current # of diesel generator units at Puerto Rico Airport
-P_diesel = 1130; %diesel generation rate [kW]
+P_diesel = 1200; %diesel generation rate [kW]
 g_diesel = n_diesel*P_diesel*ones(24, 1); %power generated from diesel at time t
-c_d = 0.0000239; %cost of diesel per kW generated
+c_d = 0.239; %cost of diesel per kW generated
 beta = 0.077818182; %diesel consumption rate [gal/kWh]
 fc = 1.9; %fuel cost per gallon [$/gallon]
 D_0 = P_diesel; 
@@ -74,7 +55,8 @@ C = 51782; %Equivalent Cell capacitance [F]
 R = 0.01; %Cell resistance [ohm]
 W_battery =  0.009; %footprint of each cell [m^2] 
 B_0 = 1000; %**********rated battery capacity [kW]*********
-g_battery_cost = 0.3; % LCOE of battery [$/kWh]
+g_battery_cost = 0.7; % LCOE of battery [$/kWh]
+gamma = 0.9; 
 
 %% LCA Values
 CO2_b = 456 *10^-6; %[ton CO2/ kWh]
@@ -97,11 +79,11 @@ c_grid = 0.2; %[$/kWh]
 %% Scaling Parameters
 %Scaling parameters were found by dividing the maximum area of each source
 %by the footprints 
-SOC_min = B_0*0.9; %minimum allowable cell energy levels [kWh] 
-SOC_max = B_0*0.15; %maximum allowable cell energy levels [kWh] 
+SOC_min = B_0*0.15; %minimum allowable cell energy levels [kWh] 
+SOC_max = B_0*0.9; %maximum allowable cell energy levels [kWh] 
 P_max = 270; %maximum discharge of battery [W] 
 b_min = 0; %minimum battery scaling
-b_max = 70*10^6; %scaling area constraint 
+b_max = 100000; %scaling area constraint 
 w_min = 0; %minimum wind scaling
 w_max = 112000; %maximum wind scaling 
 s_min = 0; %minimum wind scaling
@@ -110,15 +92,15 @@ d_min = 0; %minimum diesel scaling
 d_max = 42000; %maximum diesel scaling 
 
 A_max = 627465.2; %total area constraint [m^2]
-A_used = 0.1 * A_max;
+A_used = A_max * 1; %!!!!parameter that can be adjusted!!!
 
 %% Optimization Program 
+cvx_precision best
 cvx_begin 
     variables b s w SOC(24) E(24) B_c(24) B_d(24) D(24) 
-    
-    minimize(sum(B_c)*g_battery_cost + sum(D)*c_d + ...
+    minimize(sum(B_c)*g_battery_cost + sum(D)*c_d + b*0.001+...
         sum(g_solar)*c_s*s + sum(g_wind)*c_w*w + ...
-        c_grid*sum(E) + CO2_b*carbon_cost*b + CO2_s*sum(g_solar)*carbon_cost*s ...
+        c_grid*sum(E) + CO2_b*carbon_cost*sum(B_c) + CO2_s*sum(g_solar)*carbon_cost*s ...
         + CO2_w*sum(g_wind)*carbon_cost*w + CO2_G*carbon_cost*sum(E) + ...
         CO2_d*sum(D)*carbon_cost)
     
@@ -127,18 +109,16 @@ cvx_begin
             <= A_used; 
         
     for i = 1:length(time) - 1
-        SOC(i+1) == SOC(i) + 0.9*B_c(i) - 1/0.9*B_d(i);
+        SOC(i+1) == SOC(i) + gamma*B_c(i) - 1/gamma*B_d(i);
     end
+    
     I = length(time);
-    SOC(1) == SOC(I) + 0.9*B_c(I) - 1/0.9*B_d(I);
     SOC(8) == 0;
+    SOC(1) == SOC(I) + gamma*B_c(I) - 1/gamma*B_d(I);
+    %Battery energy level is the same at hour 0 and hour 24
+    
     for i = 1:length(time)
         SOC(i) <= b*SOC_max; 
-<<<<<<< HEAD
-        SOC(i) >= b*SOC_min; 
-        
-        s*g_solar(i) + w*g_wind(i) + d*g_diesel(i) + B_d(i) - B_c(i) + E(i) == L(i); 
-=======
         SOC(i) >= 0; 
         B_c(i) <= b*B_0;
         B_d(i) <= b*B_0;
@@ -149,7 +129,6 @@ cvx_begin
         E(i) <= E_grid*Z; 
         E(i) >= 0; 
         s*g_solar(i) + w*g_wind(i) + D(i) + B_d(i) - B_c(i) + E(i) == L(i); 
->>>>>>> e282afc3d8e53ada721fbc7d306cee6c68fb506c
     end
     
     s <= s_max;
@@ -157,16 +136,11 @@ cvx_begin
     b <= b_max;
     b >= b_min;
     w <= w_max;
-<<<<<<< HEAD
-    w >= w_min; 
-    d <= d_max; 
-    d >= d_min; 
-   
-=======
     w >= w_min;
->>>>>>> e282afc3d8e53ada721fbc7d306cee6c68fb506c
 
 cvx_end 
+
+CO2 = CO2_b*b + CO2_s*sum(g_solar)*s+ CO2_w*sum(g_wind)*w + CO2_G*sum(E) + CO2_d*sum(D);
 
 %% Results
 fprintf(1,'------------------- Results --------------------\n');
@@ -174,5 +148,28 @@ fprintf(1,'--------------------------------------------------\n');
 fprintf(1,'Minimum microgrid Cost : %4.2f USD\n',cvx_optval);
 fprintf(1,'\n');
 fprintf(1,'Solar %f | Wind %f | Battery %f',s,w,b);
-%%
-g_battery_cost*b + g_solar_cost*s + g_wind_cost*w + c_grid*sum(E)
+fprintf(1,'\n');
+fprintf(1,'Total daily emissions %f metric tons CO2eq',CO2, '\n');
+
+total_wind = w.*g_wind;
+total_solar = s.*g_solar;
+figure(1)
+plot(time/24, E, time/24, L, time/24, total_wind, 'cyan', 'LineWidth', 5)
+title(['Outage Scenario (Z = ', num2str(Z), ')'])
+legend('Hourly Energy Imported from Grid', 'Hourly Demand', 'Wind Generation') 
+%xticks([0:1:23])
+%xlim([0 24])
+set(gca,'FontSize',20)
+datetick('x', 'HHPM')
+xlabel('Hour')
+ylabel('Power [kW]')
+
+%Bat
+figure(2) 
+plot(time/24, B_c, 'green', time/24, B_d, 'red', 'LineWidth', 5) 
+title(['Battery Dynamics (Z = ', num2str(Z), ')'])
+legend('Battery Charging', 'Battery Discharging')
+set(gca, 'FontSize', 20)
+datetick('x', 'HHPM')
+xlabel('Hour')
+ylabel('Power [kW]')

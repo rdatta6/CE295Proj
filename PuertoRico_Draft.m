@@ -87,10 +87,10 @@ A_max = 627465.2; %total area constraint [m^2]
 %% Optimization Program 
 cvx_begin 
     variables b s w SOC(24) d P(24) P_c(24) E(24) 
-    
+   
     minimize(g_battery_cost*b + g_solar_cost*s + g_wind_cost*w + ...
-        c_grid*sum(E) + g_diesel_cost*d + CO2_b*carbon_cost*b + CO2_s*carbon_cost*s ...
-        + CO2_w*carbon_cost*w + CO2_G*carbon_cost*sum(E) + CO2_d*carbon_cost*d)
+     c_grid*sum(E) + g_diesel_cost*d + CO2_b*carbon_cost*b + CO2_s*carbon_cost*s ...
+     + CO2_w*carbon_cost*w + CO2_G*carbon_cost*sum(E) + CO2_d*carbon_cost*d)
     
     subject to 
         W_battery*b + W_solar*s + W_wind*w + W_diesel*d...
