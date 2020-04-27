@@ -6,24 +6,17 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
-Z = 0.4; %outrage scenarios !!!!parameter that can be adjusted!!!
+Z = 1; %outrage scenarios !!!!parameter that can be adjusted!!!
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
 M = 0.215;  %Module Efficiency
 lf = 0.862; %(1-%losses) in distribution
 n_solar = 1; %number of solar panels [-]; 50 previously 
-<<<<<<< HEAD
-c_s = 0.1255; %cost of solar per kW generated
-W_solar = 2.57; %footprint of each panel [m^2] 
-g_solar = n_solar*W_solar*M*lf*I; %Total maximum hourly generation
-S_0 = 0.5; %******rated power of one solar panel [kW]*********
-=======
 c_s = 0.1255; %LCOE of solar per kWh generated
 W_solar = 1.63; %footprint of each panel [m^2] 
 g_solar = n_solar*W_solar*M*lf*I/1000; %hourly generation [kW]
 S_0 = 345/1000; %******rated power of one solar panel [kW]*********
->>>>>>> 5ab46c08b57088005135d31c615f479ab08581e2
 g_solar_cost = S_0*c_s; %capital cost of PV Panel [$/kW]*[kW]
 
 %% Wind Parameters
@@ -43,7 +36,6 @@ W_wind = A*2;
 c_w = 0.038; %turbine cost per kWh generated [$/kWh]
 W_0 = 50; %*******rated power of one turbine [kW]*********
 g_wind_cost = W_0*c_w; %capital cost of turbine [$/kWh]*[kW]*[1hr]
->>>>>>> 5ab46c08b57088005135d31c615f479ab08581e2
 
 %% Diesel Parameters
 %cap the number of diesel units at 21 
@@ -191,6 +183,5 @@ set(gca, 'FontSize', 20)
 datetick('x', 'HHPM')
 xlabel('Hour')
 ylabel('Power [kW]')
-
 
 
