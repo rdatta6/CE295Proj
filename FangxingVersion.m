@@ -53,7 +53,7 @@ W_diesel = 14.7;  %[m^2]
 U_0 = 3.3; %Coefficient in open-circuit-voltage model [V]
 C = 51782; %Equivalent Cell capacitance [F]
 R = 0.01; %Cell resistance [ohm]
-W_battery =  0.009; %footprint of each cell [m^2] 
+W_battery =  14.86; %footprint of each cell [m^2] 
 B_0 = 1000; %**********rated battery capacity [kW]*********
 g_battery_cost = 0.7; % LCOE of battery [$/kWh]
 gamma = 0.9; 
@@ -83,7 +83,7 @@ SOC_min = B_0*0.15; %minimum allowable cell energy levels [kWh]
 SOC_max = B_0*0.9; %maximum allowable cell energy levels [kWh] 
 P_max = 270; %maximum discharge of battery [W] 
 b_min = 0; %minimum battery scaling
-b_max = 100000; %scaling area constraint 
+b_max = 0.001*100000; %scaling area constraint 
 w_min = 0; %minimum wind scaling
 w_max = 112000; %maximum wind scaling 
 s_min = 0; %minimum wind scaling
@@ -98,7 +98,7 @@ A_used = A_max * 1; %!!!!parameter that can be adjusted!!!
 cvx_precision best
 cvx_begin 
     variables b s w SOC(24) E(24) B_c(24) B_d(24) D(24) 
-    minimize(sum(B_c)*g_battery_cost + sum(D)*c_d + b*0.001+...
+    minimize(sum(B_c)*g_battery_cost + sum(D)*c_d +...
         sum(g_solar)*c_s*s + sum(g_wind)*c_w*w + ...
         c_grid*sum(E) + CO2_b*carbon_cost*sum(B_c) + CO2_s*sum(g_solar)*carbon_cost*s ...
         + CO2_w*sum(g_wind)*carbon_cost*w + CO2_G*carbon_cost*sum(E) + ...
@@ -107,28 +107,31 @@ cvx_begin
     subject to 
         W_battery*b + W_solar*s + W_wind*w...
             <= A_used; 
-        
+    I = length(time);
+
+    SOC(1) == SOC(I) + gamma*B_c(I) - 1/gamma*B_d(I);
+    %Battery energy level is the same at hour 0 and hour 24
+
     for i = 1:length(time) - 1
         SOC(i+1) == SOC(i) + gamma*B_c(i) - 1/gamma*B_d(i);
     end
     
-    I = length(time);
-    SOC(8) == 0;
-    SOC(1) == SOC(I) + gamma*B_c(I) - 1/gamma*B_d(I);
-    %Battery energy level is the same at hour 0 and hour 24
+    %SOC(8) == 0;
+
     
     for i = 1:length(time)
         SOC(i) <= b*SOC_max; 
         SOC(i) >= 0; 
-        B_c(i) <= b*B_0;
-        B_d(i) <= b*B_0;
+        B_c(i) <= b*B_0; 
+        B_d(i) <= b*B_0; 
         B_c(i) >= 0;
         B_d(i) >= 0;
         D(i) >= 0;
         D(i) <= P_diesel;
         E(i) >= 0; 
-        s*g_solar(i) + w*g_wind(i) + D(i) + B_d(i) - B_c(i) + E(i) == L(i); 
+        s*g_solar(i) + w*g_wind(i) + D(i) + B_d(i) + E(i) == L(i) + B_c(i); 
     end
+    
     
     sum(E) <= sum(E_grid)*Z; 
     s <= s_max;
