@@ -6,7 +6,7 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
-Z = 1; %outrage scenarios !!!!parameter that can be adjusted!!!
+Z = 0.5; %outrage scenarios !!!!parameter that can be adjusted!!!
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
@@ -98,7 +98,7 @@ A_used = A_max * 1; %!!!!parameter that can be adjusted!!!
 cvx_precision best
 cvx_begin 
     variables b s w SOC(24) E(24) B_c(24) B_d(24) D(24) 
-    minimize(sum(B_c)*g_battery_cost + sum(D)*c_d + b*0.001 +...
+    minimize(sum(B_c)*g_battery_cost + sum(D)*c_d +...
         sum(g_solar)*c_s*s + sum(g_wind)*c_w*w + ...
         c_grid*sum(E) + CO2_b*carbon_cost*sum(B_c) + CO2_s*sum(g_solar)*carbon_cost*s ...
         + CO2_w*sum(g_wind)*carbon_cost*w + CO2_G*carbon_cost*sum(E) + ...
@@ -107,16 +107,17 @@ cvx_begin
     subject to 
         W_battery*b + W_solar*s + W_wind*w...
             <= A_used; 
-    SOC(1) == 0;
+    I = length(time);
+
+    SOC(1) == SOC(I) + gamma*B_c(I) - 1/gamma*B_d(I);
+    %Battery energy level is the same at hour 0 and hour 24
 
     for i = 1:length(time) - 1
         SOC(i+1) == SOC(i) + gamma*B_c(i) - 1/gamma*B_d(i);
     end
     
-    I = length(time);
+    %SOC(8) == 0;
 
-    SOC(1) == SOC(I) + gamma*B_c(I) - 1/gamma*B_d(I);
-    %Battery energy level is the same at hour 0 and hour 24
     
     for i = 1:length(time)
         SOC(i) <= b*SOC_max; 
