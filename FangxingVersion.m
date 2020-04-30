@@ -6,10 +6,11 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
-Z = 1; %outrage scenarios !!!!parameter that can be adjusted!!!
+Z =  0.1; %outrage scenarios !!!!parameter that can be adjusted!!!
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
+
 M = 0.215;  %Module Efficiency
 lf = 0.862; %(1-%losses) in distribution
 n_solar = 1; %number of solar panels [-]; 50 previously 
@@ -39,7 +40,7 @@ g_wind_cost = W_0*c_w; %capital cost of turbine [$/kWh]*[kW]*[1hr]
 
 %% Diesel Parameters
 %cap the number of diesel units at 21 
-n_diesel = 1  ; %current # of diesel generator units at Puerto Rico Airport
+n_diesel = 21  ; %current # of diesel generator units at Puerto Rico Airport
 P_diesel = 1200; %diesel generation rate [kW]
 g_diesel = n_diesel*P_diesel*ones(24, 1); %power generated from diesel at time t
 c_d = 0.239; %cost of diesel per kW generated
@@ -83,7 +84,7 @@ SOC_min = B_0*0.15; %minimum allowable cell energy levels [kWh]
 SOC_max = B_0*0.9; %maximum allowable cell energy levels [kWh] 
 P_max = 270; %maximum discharge of battery [W] 
 b_min = 0; %minimum battery scaling
-b_max = 0.001*100000; %scaling area constraint 
+b_max = 100000; %scaling area constraint 
 w_min = 0; %minimum wind scaling
 w_max = 112000; %maximum wind scaling 
 s_min = 0; %minimum wind scaling
@@ -109,14 +110,18 @@ cvx_begin
             <= A_used; 
     SOC(1) == 0;
 
+     I = length(time);
+
+    SOC(1) == SOC(I) + gamma*B_c(I) - 1/gamma*B_d(I);
+    SOC(1) == SOC(I); 
+    %Battery energy level is the same at hour 0 and hour 24
+    
+    
     for i = 1:length(time) - 1
         SOC(i+1) == SOC(i) + gamma*B_c(i) - 1/gamma*B_d(i);
     end
     
-    I = length(time);
-
-    SOC(1) == SOC(I) + gamma*B_c(I) - 1/gamma*B_d(I);
-    %Battery energy level is the same at hour 0 and hour 24
+   
     
     for i = 1:length(time)
         SOC(i) <= b*SOC_max; 
