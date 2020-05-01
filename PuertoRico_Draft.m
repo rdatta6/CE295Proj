@@ -6,7 +6,7 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
-Z = 1; %outrage scenarios
+Z = 0; %outrage scenarios
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 

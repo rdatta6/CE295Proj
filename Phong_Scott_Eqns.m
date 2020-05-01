@@ -6,7 +6,7 @@ data = xlsread('CleanData.xlsx');
 time = data(:, 1); %time arary from 0 hours to 23 hours
 L = data(:, 2); %hourly load demand from SBS Paper
 E_grid = data(:, 4); %available amount of energy to import from grid
-Z = 0;%outrage scenarios !!!!parameter that can be adjusted!!!
+Z = 1;%outage scenarios !!!!parameter that can be adjusted!!!
 
 %% Solar Parameters
 I = data(:, 5); % hourly solar irradiance at time t 
@@ -76,9 +76,11 @@ U_0 = 3.3; %Coefficient in open-circuit-voltage model [V]
 C = 51782; %Equivalent Cell capacitance [F]
 R = 0.01; %Cell resistance [ohm]
 W_battery =  14.86; %footprint of each cell [m^2] 
-B_0 = 1000; %rated battery capacity [kWh]
+B_0 = 730; %rated battery capacity [kW]
 g_battery_cost = 0.7; % LCOE of battery [$/kWh]
 gamma = 0.9; 
+i_min = -35 %[A]
+i_max = 70 %[A]
 
 %% LCA Values
 CO2_b = 456 *10^-6; %[ton CO2/ kWh]
@@ -118,11 +120,11 @@ A_used = A_max * 1; %!!!!parameter that can be adjusted!!!
 
 %% Optimization Program 
 cvx_precision best
-cvx_begin 
-    variables b s w SOC(24) E(24) B_c(24) B_d(24) D(24) 
-    minimize(sum(B_c)*g_battery_cost + sum(D)*c_d + b*0.001 +...
+cvx_begin  
+    variables b s w SOC(24) E(24) P(24) P_c(24) D(24) n_battery  
+    minimize(sum(P)*g_battery_cost + sum(D)*c_d + b*0.001 +...
         sum(g_solar)*c_s*s + sum(g_wind)*c_w*w + ...
-        c_grid*sum(E) + CO2_b*carbon_cost*sum(B_c) + CO2_s*sum(g_solar)*carbon_cost*s ...
+        c_grid*sum(E) + CO2_b*carbon_cost*sum(P) + CO2_s*sum(g_solar)*carbon_cost*s ...
         + CO2_w*sum(g_wind)*carbon_cost*w + CO2_G*carbon_cost*sum(E) + ...
         CO2_d*sum(D)*carbon_cost)
     
@@ -133,13 +135,15 @@ cvx_begin
 
      I = length(time);
 
-    SOC(1) == SOC(I) + gamma*B_c(I) - 1/gamma*B_d(I);
+    %SOC(1) == SOC(I) + gamma*B_c(I) - 1/gamma*B_d(I);
     SOC(1) == SOC(I); 
     %Battery energy level is the same at hour 0 and hour 24
     
     
     for i = 1:length(time) - 1
-        SOC(i+1) == SOC(i) + gamma*B_c(i) - 1/gamma*B_d(i); 
+        SOC(i+1) == SOC(i) - 1*P(i); 
+        P(i) - P_c(i) + quad_over_lin(R*C*P_c(i), 2*SOC(i) +...
+            C*n_battery*U_0^2) <= 0; 
     end
     
    
@@ -147,14 +151,15 @@ cvx_begin
     for i = 1:length(time)
         SOC(i) <= b*SOC_max; 
         SOC(i) >= 0; 
-        B_c(i) <= b*B_0; 
-        B_d(i) <= b*B_0; 
-        B_c(i) >= 0;
-        B_d(i) >= 0;
+        P_c(i) >= i_min*sqrt(n_battery*(2/C*SOC(i)+U_0^2*n_battery));
+        P_c(i) <= i_max*sqrt(n_battery*(2/C*SOC(i)+U_0^2*n_battery)); 
+        P(i) >= -640/1000 %[W]; 
+        P(i) <= 0; 
         D(i) >= 0;
         D(i) <= (1-Z)*n_diesel*P_diesel;
         E(i) >= 0; 
-        s*g_solar(i) + w*g_wind(i) + D(i) + B_d(i) + E(i) == L(i) + B_c(i); 
+        s*g_solar(i) + w*g_wind(i) + D(i) + + E(i) + P(i)/1000 == L(i); 
+        n_battery >= 0;
     end
     
     
@@ -197,9 +202,9 @@ ylabel('Power [kW]')
 
 %Battery Charging & Discharging'
 figure(2) 
-plot(time/24, B_c, 'green', time/24, B_d, 'red', 'LineWidth', 5) 
+plot(time/24, P/1000, 'green', time/24, P_c/1000, 'red', 'LineWidth', 5) 
 title(['Battery Dynamics (Z = ', num2str(Z), ')'])
-legend('Battery Charging', 'Battery Discharging')
+legend('Battery Power ', 'Electrochemical Battery Power')
 set(gca, 'FontSize', 20)
 datetick('x', 'HHPM')
 xlabel('Hour')
