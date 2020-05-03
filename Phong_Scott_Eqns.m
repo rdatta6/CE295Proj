@@ -75,12 +75,13 @@ W_diesel = 14.7;  %[m^2]
 U_0 = 3.3; %Coefficient in open-circuit-voltage model [V]
 C = 51782; %Equivalent Cell capacitance [F]
 R = 0.01; %Cell resistance [ohm]
-W_battery =  14.86; %footprint of each cell [m^2] 
-B_0 = 730; %rated battery capacity [kW]
+W_battery =  14.86 * 0.01; %footprint of each cell [m^2] !!Assumption!!
+B_0 = 70; %rated battery capacity [kW]
+%B_0 = 730; %rated battery capacity [kW]
 g_battery_cost = 0.7; % LCOE of battery [$/kWh]
 gamma = 0.9; 
-i_min = -35 %[A]
-i_max = 70 %[A]
+i_min = -35; %[A]
+i_max = 70; %[A]
 
 %% LCA Values
 CO2_b = 456 *10^-6; %[ton CO2/ kWh]
@@ -103,11 +104,11 @@ c_grid = 0.2; %[$/kWh]
 %% Scaling Parameters
 %Scaling parameters were found by dividing the maximum area of each source
 %by the footprints 
-SOC_min = B_0*0.15; %minimum allowable cell energy levels [kWh] 
-SOC_max = B_0*0.9; %maximum allowable cell energy levels [kWh] 
+SOC_min = B_0*0.15*1000; %minimum allowable cell energy levels [Wh] 
+SOC_max = B_0*0.9*1000; %maximum allowable cell energy levels [Wh] 
 P_max = 270; %maximum discharge of battery [W] 
-b_min = 0; %minimum battery scaling
-b_max = 100000; %scaling area constraint 
+%b_min = 0; %minimum battery scaling
+%b_max = 100000; %scaling area constraint 
 w_min = 0; %minimum wind scaling
 w_max = 112000; %maximum wind scaling 
 s_min = 0; %minimum wind scaling
@@ -121,67 +122,77 @@ A_used = A_max * 1; %!!!!parameter that can be adjusted!!!
 %% Optimization Program 
 cvx_precision best
 cvx_begin  
-    variables b s w SOC(24) E(24) P(24) P_c(24) D(24) n_battery  
-    minimize(sum(P)*g_battery_cost + sum(D)*c_d + b*0.001 +...
+    variables s w SOC(24) E(24) P(24) P_c(24) D(24) n_battery
+    minimize(norm(P)/1000*g_battery_cost + sum(D)*c_d + n_battery*0.01 +...
         sum(g_solar)*c_s*s + sum(g_wind)*c_w*w + ...
-        c_grid*sum(E) + CO2_b*carbon_cost*sum(P) + CO2_s*sum(g_solar)*carbon_cost*s ...
+        c_grid*sum(E) + CO2_b*carbon_cost*norm(P/1000) + CO2_s*sum(g_solar)*carbon_cost*s ...
         + CO2_w*sum(g_wind)*carbon_cost*w + CO2_G*carbon_cost*sum(E) + ...
         CO2_d*sum(D)*carbon_cost)
     
     subject to 
-        W_battery*b + W_solar*s + W_wind*w...
+        W_battery*n_battery + W_solar*s + W_wind*w...
             <= A_used; 
-    SOC(1) == 0;
+    SOC(11) == 0; % SOC=0 at 11AM gives us the lowest cost
 
      I = length(time);
 
-    %SOC(1) == SOC(I) + gamma*B_c(I) - 1/gamma*B_d(I);
-    SOC(1) == SOC(I); 
-    %Battery energy level is the same at hour 0 and hour 24
+    SOC(1) == SOC(I) - 1*P_c(I); 
+     %Battery energy level is the same at hour 0 and hour 24
     
+    P(I) - P_c(I) + R*C*quad_over_lin(P_c(I), 2*SOC(I) +...
+            C*n_battery*U_0^2) <= 0; 
+     %Battery energy level at hr 24 needs to comply the rule
+   
     
     for i = 1:length(time) - 1
-        SOC(i+1) == SOC(i) - 1*P(i); 
-        P(i) - P_c(i) + quad_over_lin(R*C*P_c(i), 2*SOC(i) +...
+        SOC(i+1) == SOC(i) - 1*P_c(i); 
+        P(i) - P_c(i) + R*C*quad_over_lin(P_c(i), 2*SOC(i) +...
             C*n_battery*U_0^2) <= 0; 
     end
     
-   
+   M_c = [15:18]; % battery charging time
+   M_d = [1:14,19:24]; % battery discharging time 
     
+   for i = M_c
+        P(i) >= -n_battery*640; 
+        % [W] assume power limit of each battery is 640 W 
+        P(i) <= 0;
+   end
+   
+   for i = M_d
+       P_c(i) >= i_min*geo_mean([n_battery, (2/C*SOC(i)+U_0^2*n_battery)]);
+       P_c(i) <= i_max*geo_mean([n_battery, (2/C*SOC(i)+U_0^2*n_battery)]); 
+   end
+         
     for i = 1:length(time)
-        SOC(i) <= b*SOC_max; 
-        SOC(i) >= 0; 
-        P_c(i) >= i_min*sqrt(n_battery*(2/C*SOC(i)+U_0^2*n_battery));
-        P_c(i) <= i_max*sqrt(n_battery*(2/C*SOC(i)+U_0^2*n_battery)); 
-        P(i) >= -640/1000 %[W]; 
-        P(i) <= 0; 
+        SOC(i) <= n_battery*SOC_max; %[Wh] 
+        SOC(i) >= 0; %[Wh]
         D(i) >= 0;
         D(i) <= (1-Z)*n_diesel*P_diesel;
         E(i) >= 0; 
         s*g_solar(i) + w*g_wind(i) + D(i) + + E(i) + P(i)/1000 == L(i); 
-        n_battery >= 0;
     end
     
+
     
+    n_battery >= 0;
     sum(E) <= sum(E_grid)*Z; 
     s <= s_max;
     s >= s_min;
-    b <= b_max;
-    b >= b_min;
     w <= w_max;
     w >= w_min;
 
 
 cvx_end 
 
-CO2 = CO2_b*b + CO2_s*sum(g_solar)*s+ CO2_w*sum(g_wind)*w + CO2_G*sum(E) + CO2_d*sum(D);
+CO2 = CO2_b*n_battery + CO2_s*sum(g_solar)*s+ CO2_w*sum(g_wind)*w + CO2_G*sum(E) + CO2_d*sum(D);
 
 %% Results
 fprintf(1,'------------------- Results --------------------\n');
 fprintf(1,'--------------------------------------------------\n');
 fprintf(1,'Minimum microgrid Cost : %4.2f USD\n',cvx_optval);
 fprintf(1,'\n');
-fprintf(1,'Solar %f | Wind %f | Battery %f',s,w,b);
+fprintf(1,'Solar %f | Wind %f | Battery %f',s,w,n_battery);
 fprintf(1,'\n');
 fprintf(1,'Total daily emissions %f metric tons CO2eq',CO2, '\n');
 
@@ -192,7 +203,8 @@ figure(1)
 plot(time/24, E, time/24, L, time/24, total_solar, time/24, total_wind, 'cyan',...
     time/24, D, 'black', 'LineWidth', 5)
 title(['Outage Scenario (Z = ', num2str(Z), ')'])
-legend('Hourly Energy Imported from Grid', 'Hourly Demand', 'Solar Generation', 'Wind Generation', 'Diesel Generation') 
+legend('Hourly Energy Imported from Grid', 'Hourly Demand', ...
+    'Solar Generation', 'Wind Generation', 'Diesel Generation','location','southeast') 
 %xticks([0:1:23])
 %xlim([0 24])
 set(gca,'FontSize',20)
@@ -212,11 +224,11 @@ ylabel('Power [kW]')
 
 %Battery SOC
 figure(3)
-plot(time/24, SOC, 'LineWidth', 5)
+plot(time/24, SOC/1000, 'LineWidth', 5)
 title(['Battery SOC (Z = ', num2str(Z), ')'])
 set(gca, 'FontSize', 20)
 datetick('x', 'HHPM')
 xlabel('Hour')
-ylabel('Power [kW]')
+ylabel('Energy [kWh]')
 
 
